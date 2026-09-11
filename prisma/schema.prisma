@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum BmrFormula {
+  HARRIS_BENEDICT_REVISED
+  MIFFLIN_ST_JEOR
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  INTENSE
+  VERY_INTENSE
+}
+
+enum GoalType {
+  LOSS
+  MAINTENANCE
+  GAIN
+}
+
+enum FoodState {
+  RAW
+  COOKED
+  NA
+}
+
+enum FoodSource {
+  SARA2
+  ANMAT
+  MANUAL
+}
+
+enum FoodStatus {
+  ACTIVE
+  NEEDS_REVIEW
+}
+
+enum VersionReason {
+  CREATE
+  EDIT
+  MARK_REVIEW
+  RESTORE
+}
+
+enum PreferenceStatus {
+  FAVORITE
+  EXCLUDED
+}
+
+model Profile {
+  id        String    @id @default(cuid())
+  name      String
+  sex       Sex
+  birthDate DateTime?
+  ageYears  Int?
+  heightCm  Float
+  weightKg  Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  preferences ProfileFoodPreference[]
+  plans       Plan[]
+}
+
+model FoodItem {
+  id                 String     @id @default(cuid())
+  name               String
+  category           String
+  state              FoodState
+  kcalPer100g        Float
+  proteinPer100g     Float
+  fatPer100g         Float
+  carbPer100g        Float
+  sodiumMgPer100g    Float?
+  householdUnitName  String?
+  householdUnitGrams Float?
+  source             FoodSource
+  sourceDetail       String?
+  status             FoodStatus @default(ACTIVE)
+  currentVersion     Int        @default(1)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  versions    FoodItemVersion[]
+  preferences ProfileFoodPreference[]
+  planItems   PlanMealItem[]
+
+  @@index([category])
+  @@index([status])
+}
+
+model FoodItemVersion {
+  id                 String        @id @default(cuid())
+  foodItemId         String
+  versionNumber      Int
+  name               String
+  category           String
+  state              FoodState
+  kcalPer100g        Float
+  proteinPer100g     Float
+  fatPer100g         Float
+  carbPer100g        Float
+  sodiumMgPer100g    Float?
+  householdUnitName  String?
+  householdUnitGrams Float?
+  source             FoodSource
+  sourceDetail       String?
+  status             FoodStatus
+  reason             VersionReason
+  changedFields      String?
+  changeNote         String?
+  createdAt          DateTime      @default(now())
+
+  foodItem  FoodItem       @relation(fields: [foodItemId], references: [id], onDelete: Cascade)
+  planItems PlanMealItem[]
+
+  @@unique([foodItemId, versionNumber])
+  @@index([foodItemId])
+}
+
+model ProfileFoodPreference {
+  id         String           @id @default(cuid())
+  profileId  String
+  foodItemId String
+  status     PreferenceStatus
+  reason     String?
+  createdAt  DateTime         @default(now())
+
+  profile  Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  foodItem FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, foodItemId])
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  profileId String
+  label     String?
+  createdAt DateTime @default(now())
+
+  sexAtCalc      Sex
+  ageYearsAtCalc Int
+  heightCmAtCalc Float
+  weightKgAtCalc Float
+
+  formula           BmrFormula
+  bmrKcal           Float
+  activityLevel     ActivityLevel
+  activityFactor    Float
+  tdeeKcal          Float
+  goalType          GoalType
+  goalAdjustmentPct Float
+  targetKcal        Float
+
+  proteinGPerKg  Float
+  fatGPerKg      Float
+  targetProteinG Float
+  targetFatG     Float
+  targetCarbG    Float
+
+  mealsCount Int
+  mealSplit  String
+
+  profile Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  meals   PlanMeal[]
+}
+
+model PlanMeal {
+  id     String @id @default(cuid())
+  planId String
+  order  Int
+  name   String
+
+  targetPct      Float
+  targetKcal     Float
+  targetProteinG Float
+  targetFatG     Float
+  targetCarbG    Float
+
+  plan  Plan           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  items PlanMealItem[]
+}
+
+model PlanMealItem {
+  id                String  @id @default(cuid())
+  planMealId        String
+  foodItemId        String?
+  foodItemVersionId String?
+
+  foodName           String
+  category           String
+  state              FoodState
+  source             FoodSource
+  sourceDetail       String?
+  householdUnitName  String?
+  householdUnitGrams Float?
+  kcalPer100gSnap    Float
+  proteinPer100gSnap Float
+  fatPer100gSnap     Float
+  carbPer100gSnap    Float
+
+  grams           Float
+  computedKcal    Float
+  computedProtein Float
+  computedFat     Float
+  computedCarb    Float
+
+  planMeal        PlanMeal         @relation(fields: [planMealId], references: [id], onDelete: Cascade)
+  foodItem        FoodItem?        @relation(fields: [foodItemId], references: [id], onDelete: SetNull)
+  foodItemVersion FoodItemVersion? @relation(fields: [foodItemVersionId], references: [id], onDelete: SetNull)
+}
