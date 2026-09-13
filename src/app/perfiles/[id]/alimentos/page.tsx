@@ -100,9 +100,14 @@ export default function ProfileFoodsPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <Link href="/perfiles" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-        ← Cambiar de perfil
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/perfiles" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+          ← Cambiar de perfil
+        </Link>
+        <Link href={`/perfiles/${profileId}/plan`} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+          Mis planes →
+        </Link>
+      </div>
 
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
