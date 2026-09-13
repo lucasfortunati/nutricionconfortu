@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nutricionista Virtual
 
-## Getting Started
+Calculadora de requerimiento calórico, distribución de macronutrientes y generador
+de planes alimentarios personalizados, con una base de alimentos versionada.
 
-First, run the development server:
+Ver el detalle funcional completo en la conversación/PR original. Stack: Next.js
+(App Router) + TypeScript + Tailwind CSS + Prisma + PostgreSQL.
+
+## Desarrollo local
+
+Necesitás Node.js y una base PostgreSQL (local o remota).
 
 ```bash
+npm install
+cp .env.example .env   # y completá DATABASE_URL con tu conexión a Postgres
+npx prisma migrate dev
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrí [http://localhost:3000](http://localhost:3000). Desde el menú de arriba se
+navega entre la Calculadora, Perfiles (favoritos/exclusiones/planes) y el panel
+de Administración de alimentos.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run test
+```
 
-## Learn More
+## Deploy en Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Importá el repo en [vercel.com](https://vercel.com/new) (conectando tu cuenta
+   de GitHub).
+2. En el proyecto, andá a **Storage → Create Database → Postgres** (Neon) y
+   conectalo — Vercel inyecta la variable `DATABASE_URL` automáticamente.
+3. Una vez desplegado, corré la migración y el seed contra esa base (podés
+   hacerlo desde tu compu apuntando `DATABASE_URL` a la base de Vercel, o desde
+   la terminal que ofrece el dashboard de Neon):
+   ```bash
+   npx prisma migrate deploy
+   npm run db:seed
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Sin este paso 2 (una base Postgres real), el deploy funciona pero no persiste
+datos: cada función serverless de Vercel no comparte disco, así que un archivo
+SQLite local no sirve en producción.
