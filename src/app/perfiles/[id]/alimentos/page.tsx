@@ -20,6 +20,8 @@ export default function ProfileFoodsPage({ params }: { params: Promise<{ id: str
   const [viewFilter, setViewFilter] = useState<ViewFilter>("ALL");
   const [search, setSearch] = useState("");
   const [reasonPickerFoodId, setReasonPickerFoodId] = useState<string | null>(null);
+  const [applyingDefaults, setApplyingDefaults] = useState(false);
+  const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,6 +100,20 @@ export default function ProfileFoodsPage({ params }: { params: Promise<{ id: str
     setReasonPickerFoodId(null);
   }
 
+  async function applyDefaults() {
+    setApplyingDefaults(true);
+    setDefaultsMessage(null);
+    const res = await fetch(`/api/profiles/${profileId}/preferences/defaults`, { method: "POST" });
+    const result = await res.json();
+    await load();
+    setDefaultsMessage(
+      result.added > 0
+        ? `Se agregaron ${result.added} alimentos favoritos.`
+        : "Ya tenías todos esos alimentos elegidos, no se agregó nada nuevo.",
+    );
+    setApplyingDefaults(false);
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="flex items-center justify-between">
@@ -123,6 +139,23 @@ export default function ProfileFoodsPage({ params }: { params: Promise<{ id: str
           </p>
         )}
       </header>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950">
+        <p className="text-sm text-emerald-900 dark:text-emerald-200">
+          ¿No querés elegir alimento por alimento? Agregá de una una selección de alimentos reales y variados
+          (pollo, arroz, pan, huevo, yogur, frutas, verduras...) sin tocar lo que ya elegiste.
+        </p>
+        <div>
+          <button
+            onClick={applyDefaults}
+            disabled={applyingDefaults}
+            className="rounded-full border border-emerald-400 bg-white px-3 py-1.5 text-sm font-medium text-emerald-800 disabled:opacity-50 dark:border-emerald-700 dark:bg-emerald-900 dark:text-emerald-200"
+          >
+            {applyingDefaults ? "Agregando…" : "★ Agregar selección recomendada"}
+          </button>
+        </div>
+        {defaultsMessage && <p className="text-xs text-emerald-800 dark:text-emerald-300">{defaultsMessage}</p>}
+      </div>
 
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">
