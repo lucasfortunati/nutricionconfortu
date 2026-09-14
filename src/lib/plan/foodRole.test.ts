@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFoodRole } from "./foodRole";
+import { classifyBreakfastRole, classifyFoodRole } from "./foodRole";
 
 describe("classifyFoodRole", () => {
   it("clasifica la pechuga de pollo como fuente de proteína", () => {
@@ -20,5 +20,31 @@ describe("classifyFoodRole", () => {
 
   it("clasifica alimentos casi sin macros como OTHER, no como fuente de nada", () => {
     expect(classifyFoodRole({ proteinPer100g: 0.2, fatPer100g: 0, carbPer100g: 0.5 })).toBe("OTHER");
+  });
+});
+
+describe("classifyBreakfastRole", () => {
+  // Por categoría, no por kcal: el huevo es "FAT" con classifyFoodRole (la
+  // yema pesa más en kcal que la clara), pero en un desayuno argentino es la
+  // fuente de proteína — regresión del bug real reportado (pollo en el
+  // desayuno) donde además se vio que el heurístico por kcal no sirve acá.
+  it("clasifica huevos y lácteos como proteína", () => {
+    expect(classifyBreakfastRole({ category: "Huevos" })).toBe("PROTEIN");
+    expect(classifyBreakfastRole({ category: "Lácteos" })).toBe("PROTEIN");
+  });
+
+  it("clasifica cereales y productos envasados como carbohidrato", () => {
+    expect(classifyBreakfastRole({ category: "Cereales y derivados" })).toBe("CARB");
+    expect(classifyBreakfastRole({ category: "Productos envasados" })).toBe("CARB");
+  });
+
+  it("clasifica frutos secos y aceites/grasas como grasa", () => {
+    expect(classifyBreakfastRole({ category: "Frutos secos y semillas" })).toBe("FAT");
+    expect(classifyBreakfastRole({ category: "Grasas y aceites" })).toBe("FAT");
+  });
+
+  it("no clasifica carnes ni verduras como nada (no son de desayuno)", () => {
+    expect(classifyBreakfastRole({ category: "Carnes y aves" })).toBe("OTHER");
+    expect(classifyBreakfastRole({ category: "Verduras" })).toBe("OTHER");
   });
 });

@@ -13,6 +13,8 @@ export const FOOD_VERSIONED_FIELDS = [
   "source",
   "sourceDetail",
   "status",
+  "suitableBreakfast",
+  "suitableMainMeal",
 ] as const;
 
 export type VersionedField = (typeof FOOD_VERSIONED_FIELDS)[number];

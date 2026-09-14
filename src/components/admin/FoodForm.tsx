@@ -27,6 +27,8 @@ function toFormValues(food?: FoodItem | null): FoodFormValues {
       householdUnitGrams: null,
       source: "MANUAL",
       sourceDetail: "",
+      suitableBreakfast: false,
+      suitableMainMeal: true,
       changeNote: "",
     };
   }
@@ -43,6 +45,8 @@ function toFormValues(food?: FoodItem | null): FoodFormValues {
     householdUnitGrams: food.householdUnitGrams,
     source: food.source,
     sourceDetail: food.sourceDetail ?? "",
+    suitableBreakfast: food.suitableBreakfast,
+    suitableMainMeal: food.suitableMainMeal,
     changeNote: "",
   };
 }
@@ -141,6 +145,26 @@ export function FoodForm({
               </option>
             ))}
           </select>
+        </label>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800">
+        <span className="text-sm text-zinc-700 dark:text-zinc-300">¿Dónde tiene sentido usarlo en un plan?</span>
+        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input
+            type="checkbox"
+            checked={values.suitableBreakfast}
+            onChange={(e) => update("suitableBreakfast", e.target.checked)}
+          />
+          Desayuno / merienda (pan, huevo, yogur, fruta, queso, nueces...)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input
+            type="checkbox"
+            checked={values.suitableMainMeal}
+            onChange={(e) => update("suitableMainMeal", e.target.checked)}
+          />
+          Almuerzo / cena (carnes, arroz, legumbres, verduras...)
         </label>
       </div>
 

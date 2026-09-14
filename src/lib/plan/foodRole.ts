@@ -30,3 +30,22 @@ export function classifyFoodRole(food: MacroProfile): FoodRole {
   if (fatKcal >= proteinKcal && fatKcal >= carbKcal) return "FAT";
   return "CARB";
 }
+
+const BREAKFAST_PROTEIN_CATEGORIES = ["Huevos", "Lácteos"];
+const BREAKFAST_CARB_CATEGORIES = ["Cereales y derivados", "Productos envasados"];
+const BREAKFAST_FAT_CATEGORIES = ["Frutos secos y semillas", "Grasas y aceites"];
+
+/**
+ * Clasificación por categoría (no por kcal) para desayuno/merienda: por
+ * densidad calórica el huevo o el queso dan "FAT" con classifyFoodRole (el
+ * heurístico de kcal no aplica bien a lácteos/huevo), pero en un desayuno
+ * argentino son justamente la fuente de proteína. Se arma por categoría en
+ * vez de por macro dominante para reflejar cómo se arma un desayuno real
+ * (pan/avena, huevo/queso/yogur, fruta, nueces), no por optimización de macros.
+ */
+export function classifyBreakfastRole(food: { category: string }): FoodRole {
+  if (BREAKFAST_PROTEIN_CATEGORIES.includes(food.category)) return "PROTEIN";
+  if (BREAKFAST_CARB_CATEGORIES.includes(food.category)) return "CARB";
+  if (BREAKFAST_FAT_CATEGORIES.includes(food.category)) return "FAT";
+  return "OTHER";
+}

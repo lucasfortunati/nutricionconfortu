@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { classifyBreakfastRole } from "./foodRole";
 import { buildMealGreedy, type CandidateFood } from "./greedyMeal";
 
 // Alimentos sintéticos "puros" (sin cross-contaminación de macros) para poder
@@ -156,5 +157,68 @@ describe("buildMealGreedy", () => {
     expect(result.items).toEqual([]);
     expect(result.totals).toEqual({ kcal: 0, proteinG: 0, fatG: 0, carbG: 0 });
     expect(result.warnings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("con roleClassifier y fillerCategory de desayuno, arma la comida con pan/huevo/nueces/fruta y nunca elige carne", () => {
+    // Regresión del bug real reportado: sin este modo, "Pechuga de pollo"
+    // (proteína pura por kcal) terminaba elegida para el desayuno.
+    const chicken: CandidateFood = {
+      id: "chicken",
+      name: "Pechuga de pollo, cruda",
+      category: "Carnes y aves",
+      kcalPer100g: 120,
+      proteinPer100g: 22.5,
+      fatPer100g: 2.6,
+      carbPer100g: 0,
+    };
+    const egg: CandidateFood = {
+      id: "egg",
+      name: "Huevo entero, crudo",
+      category: "Huevos",
+      kcalPer100g: 143,
+      proteinPer100g: 12.6,
+      fatPer100g: 9.5,
+      carbPer100g: 0.7,
+    };
+    const bread: CandidateFood = {
+      id: "bread",
+      name: "Pan lactal blanco",
+      category: "Cereales y derivados",
+      kcalPer100g: 250,
+      proteinPer100g: 8,
+      fatPer100g: 3,
+      carbPer100g: 48,
+    };
+    const nuts: CandidateFood = {
+      id: "nuts",
+      name: "Nuez",
+      category: "Frutos secos y semillas",
+      kcalPer100g: 654,
+      proteinPer100g: 15.2,
+      fatPer100g: 65.2,
+      carbPer100g: 13.7,
+    };
+    const apple: CandidateFood = {
+      id: "apple",
+      name: "Manzana",
+      category: "Frutas",
+      kcalPer100g: 52,
+      proteinPer100g: 0.3,
+      fatPer100g: 0.2,
+      carbPer100g: 13.8,
+    };
+
+    const target = { kcal: 400, proteinG: 20, fatG: 15, carbG: 50 };
+    const result = buildMealGreedy(target, [chicken, egg, bread, nuts, apple], {
+      random: () => 0,
+      roleClassifier: classifyBreakfastRole,
+      fillerCategory: "Frutas",
+    });
+
+    const chosenIds = result.items.map((i) => i.food.id);
+    expect(chosenIds).not.toContain("chicken");
+    expect(chosenIds).toContain("egg");
+    expect(chosenIds).toContain("bread");
+    expect(chosenIds).toContain("apple");
   });
 });

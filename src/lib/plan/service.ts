@@ -4,9 +4,36 @@ import { ACTIVITY_FACTORS, calculateTdee } from "@/lib/nutrition/tdee";
 import { applyGoalAdjustment, clampAdjustmentPct } from "@/lib/nutrition/goal";
 import { calculateMacroDistribution } from "@/lib/nutrition/macros";
 import type { FoodItem, Prisma } from "@prisma/client";
-import { distributeMealTargets, type MealTarget } from "./mealSplit";
-import { buildMealGreedy, type GreedyMealResult } from "./greedyMeal";
+import { classifyBreakfastRole } from "./foodRole";
+import { distributeMealTargets, isBreakfastStyleMeal, type MealTarget } from "./mealSplit";
+import { buildMealGreedy, type GreedyMealResult, type MealMacroTarget } from "./greedyMeal";
 import type { CreatePlanInput } from "./schema";
+
+const BREAKFAST_FILLER_CATEGORY = "Frutas";
+
+/**
+ * Arma una comida respetando qué alimentos tienen sentido según el tipo:
+ * desayuno/merienda/colación usa solo favoritos marcados suitableBreakfast
+ * (pan, huevo, yogur, fruta, nueces) y clasifica roles por categoría;
+ * almuerzo/cena usa solo suitableMainMeal (carnes, arroz, legumbres,
+ * verduras) con la heurística de macros por kcal.
+ */
+function buildMealFor(
+  mealName: string,
+  target: MealMacroTarget,
+  favoriteFoods: FoodItem[],
+): GreedyMealResult<FoodItem> {
+  if (isBreakfastStyleMeal(mealName)) {
+    const candidates = favoriteFoods.filter((f) => f.suitableBreakfast);
+    return buildMealGreedy(target, candidates, {
+      roleClassifier: classifyBreakfastRole,
+      fillerCategory: BREAKFAST_FILLER_CATEGORY,
+    });
+  }
+
+  const candidates = favoriteFoods.filter((f) => f.suitableMainMeal);
+  return buildMealGreedy(target, candidates);
+}
 
 interface MealGenerationOutcome {
   target: MealTarget;
@@ -90,7 +117,7 @@ export async function createPlan(profileId: string, input: CreatePlanInput) {
 
   const outcomes: MealGenerationOutcome[] = mealTargets.map((target) => ({
     target,
-    result: buildMealGreedy(target, favoriteFoods),
+    result: buildMealFor(target.name, target, favoriteFoods),
   }));
 
   const planId = await prisma.$transaction(async (tx) => {
@@ -180,7 +207,7 @@ export async function regenerateMeal(planMealId: string) {
     fatG: meal.targetFatG,
     carbG: meal.targetCarbG,
   };
-  const result = buildMealGreedy(target, favoriteFoods);
+  const result = buildMealFor(meal.name, target, favoriteFoods);
 
   await prisma.$transaction(async (tx) => {
     await tx.planMealItem.deleteMany({ where: { planMealId } });

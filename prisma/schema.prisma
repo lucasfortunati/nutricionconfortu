@@ -90,6 +90,8 @@ model FoodItem {
   source             FoodSource
   sourceDetail       String?
   status             FoodStatus @default(ACTIVE)
+  suitableBreakfast  Boolean    @default(false)
+  suitableMainMeal   Boolean    @default(true)
   currentVersion     Int        @default(1)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -119,6 +121,8 @@ model FoodItemVersion {
   source             FoodSource
   sourceDetail       String?
   status             FoodStatus
+  suitableBreakfast  Boolean
+  suitableMainMeal   Boolean
   reason             VersionReason
   changedFields      String?
   changeNote         String?

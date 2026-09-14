@@ -163,4 +163,13 @@ export const INIT_SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "PlanMealItem" ADD CONSTRAINT "PlanMealItem_planMealId_fkey" FOREIGN KEY ("planMealId") REFERENCES "PlanMeal"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
   `ALTER TABLE "PlanMealItem" ADD CONSTRAINT "PlanMealItem_foodItemId_fkey" FOREIGN KEY ("foodItemId") REFERENCES "FoodItem"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
   `ALTER TABLE "PlanMealItem" ADD CONSTRAINT "PlanMealItem_foodItemVersionId_fkey" FOREIGN KEY ("foodItemVersionId") REFERENCES "FoodItemVersion"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+
+  // --- Migración 20260914053723_add_meal_suitability ---
+  // IF NOT EXISTS + DEFAULT: segura de re-correr y no rompe filas ya
+  // existentes en FoodItemVersion (que en el schema.prisma es NOT NULL sin
+  // default, porque cada inserción nueva ya manda el valor explícito).
+  `ALTER TABLE "FoodItem" ADD COLUMN IF NOT EXISTS "suitableBreakfast" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "FoodItem" ADD COLUMN IF NOT EXISTS "suitableMainMeal" BOOLEAN NOT NULL DEFAULT true`,
+  `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "suitableBreakfast" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "suitableMainMeal" BOOLEAN NOT NULL DEFAULT true`,
 ];

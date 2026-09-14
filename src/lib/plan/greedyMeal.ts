@@ -1,4 +1,4 @@
-import { classifyFoodRole, type MacroProfile } from "./foodRole";
+import { classifyFoodRole, type FoodRole, type MacroProfile } from "./foodRole";
 
 export interface CandidateFood extends MacroProfile {
   id: string;
@@ -44,14 +44,18 @@ export interface GreedyMealOptions {
   random?: () => number;
   /** Tope de gramos por ítem para evitar resultados absurdos (ej. 3kg de un alimento). */
   maxGramsPerItem?: number;
-  /** Porción fija de verdura de relleno, cuando hay una candidata disponible. */
-  vegetableFillerGrams?: number;
+  /** Porción fija del alimento de relleno, cuando hay una candidata disponible. */
+  fillerGrams?: number;
+  /** Categoría usada como relleno de porción fija: verdura en almuerzo/cena, fruta en desayuno/merienda. */
+  fillerCategory?: string;
+  /** Cómo clasificar el rol de cada alimento; por defecto la heurística por kcal (pensada para almuerzo/cena). */
+  roleClassifier?: (food: CandidateFood) => FoodRole;
 }
 
 const DEFAULT_TOLERANCE_PCT = 10;
 const DEFAULT_MAX_GRAMS_PER_ITEM = 500;
-const DEFAULT_VEGETABLE_FILLER_GRAMS = 100;
-const VEGETABLE_CATEGORY = "Verduras";
+const DEFAULT_FILLER_GRAMS = 100;
+const DEFAULT_FILLER_CATEGORY = "Verduras";
 
 function pickRandom<T>(list: T[], random: () => number): T | null {
   if (list.length === 0) return null;
@@ -87,25 +91,27 @@ export function buildMealGreedy<T extends CandidateFood>(
   const tolerancePct = options.tolerancePct ?? DEFAULT_TOLERANCE_PCT;
   const random = options.random ?? Math.random;
   const maxGrams = options.maxGramsPerItem ?? DEFAULT_MAX_GRAMS_PER_ITEM;
-  const vegGrams = options.vegetableFillerGrams ?? DEFAULT_VEGETABLE_FILLER_GRAMS;
+  const fillerGrams = options.fillerGrams ?? DEFAULT_FILLER_GRAMS;
+  const fillerCategory = options.fillerCategory ?? DEFAULT_FILLER_CATEGORY;
+  const classifyRole = options.roleClassifier ?? classifyFoodRole;
 
   const warnings: string[] = [];
 
-  // Las verduras nunca se eligen como fuente principal de un macro (aunque por
-  // su ratio de carbohidrato puedan clasificar como "CARB"): su densidad
-  // calórica es tan baja que terminarían pidiendo porciones irreales (ej.
-  // >1kg de brócoli para llegar a 100g de carbohidratos). Solo entran como
-  // relleno de porción fija.
-  const nonVegCandidates = candidates.filter((f) => f.category !== VEGETABLE_CATEGORY);
-  const proteinCandidates = nonVegCandidates.filter((f) => classifyFoodRole(f) === "PROTEIN");
-  const carbCandidates = nonVegCandidates.filter((f) => classifyFoodRole(f) === "CARB");
-  const fatCandidates = nonVegCandidates.filter((f) => classifyFoodRole(f) === "FAT");
-  const vegCandidates = candidates.filter((f) => f.category === VEGETABLE_CATEGORY);
+  // El alimento de relleno (verdura en almuerzo/cena, fruta en desayuno/
+  // merienda) nunca se elige como fuente principal de un macro: su densidad
+  // calórica suele ser tan baja que terminaría pidiendo porciones irreales
+  // (ej. >1kg de brócoli para llegar a 100g de carbohidratos). Solo entra
+  // como porción fija aparte.
+  const nonFillerCandidates = candidates.filter((f) => f.category !== fillerCategory);
+  const proteinCandidates = nonFillerCandidates.filter((f) => classifyRole(f) === "PROTEIN");
+  const carbCandidates = nonFillerCandidates.filter((f) => classifyRole(f) === "CARB");
+  const fatCandidates = nonFillerCandidates.filter((f) => classifyRole(f) === "FAT");
+  const fillerCandidates = candidates.filter((f) => f.category === fillerCategory);
 
   const proteinFood = pickRandom(proteinCandidates, random);
   const carbFood = pickRandom(carbCandidates, random);
   const fatFood = pickRandom(fatCandidates, random);
-  const vegFood = pickRandom(vegCandidates, random);
+  const fillerFood = pickRandom(fillerCandidates, random);
 
   const items: MealItemResult<T>[] = [];
 
@@ -170,9 +176,9 @@ export function buildMealGreedy<T extends CandidateFood>(
     }
   }
 
-  // 4) Verdura de relleno: porción fija, aporte menor, mejora lo realista del plato.
-  if (vegFood && !items.some((i) => i.food.id === vegFood.id)) {
-    addItem(vegFood, vegGrams);
+  // 4) Relleno de porción fija (verdura o fruta según la comida): aporte menor, mejora lo realista del plato.
+  if (fillerFood && !items.some((i) => i.food.id === fillerFood.id)) {
+    addItem(fillerFood, fillerGrams);
   }
 
   const totals = items.reduce(

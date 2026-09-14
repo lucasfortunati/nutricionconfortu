@@ -10,6 +10,24 @@ function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function MealSuitabilityBadges({ food }: { food: FoodItem }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {food.suitableBreakfast && (
+        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+          Desayuno
+        </span>
+      )}
+      {food.suitableMainMeal && (
+        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-950 dark:text-green-300">
+          Almuerzo/cena
+        </span>
+      )}
+      {!food.suitableBreakfast && !food.suitableMainMeal && <span className="text-xs text-zinc-400">—</span>}
+    </div>
+  );
+}
+
 export function FoodTable({
   foods,
   onEdit,
@@ -30,6 +48,7 @@ export function FoodTable({
           <tr>
             <th className="px-3 py-2 font-medium">Nombre</th>
             <th className="px-3 py-2 font-medium">Categoría</th>
+            <th className="px-3 py-2 font-medium">Momento</th>
             <th className="px-3 py-2 font-medium">Estado</th>
             <th className="px-3 py-2 text-right font-medium">Kcal</th>
             <th className="px-3 py-2 text-right font-medium">P/G/C (g)</th>
@@ -50,6 +69,9 @@ export function FoodTable({
                 )}
               </td>
               <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{food.category}</td>
+              <td className="px-3 py-2">
+                <MealSuitabilityBadges food={food} />
+              </td>
               <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{STATE_LABELS[food.state]}</td>
               <td className="px-3 py-2 text-right tabular-nums text-zinc-900 dark:text-zinc-50">
                 {food.kcalPer100g}

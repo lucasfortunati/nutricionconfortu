@@ -62,6 +62,17 @@ export function isValidMealSplit(splits: MealSplitEntry[]): boolean {
   return Math.abs(total - 100) < 0.01;
 }
 
+const BREAKFAST_STYLE_MEAL_NAMES = ["desayuno", "merienda", "colación"];
+
+/**
+ * Desayuno/merienda/colación se arman con otro tipo de alimentos que
+ * almuerzo/cena (pan/huevo/yogur/fruta, no carne/arroz/legumbres). Se
+ * detecta por el nombre de la comida, no hay otro campo que lo distinga.
+ */
+export function isBreakfastStyleMeal(mealName: string): boolean {
+  return BREAKFAST_STYLE_MEAL_NAMES.includes(mealName.trim().toLowerCase());
+}
+
 export function distributeMealTargets(daily: DailyTargets, splits: MealSplitEntry[]): MealTarget[] {
   return splits.map((s) => ({
     name: s.name,

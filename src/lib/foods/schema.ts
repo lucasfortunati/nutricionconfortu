@@ -18,6 +18,10 @@ export const foodInputSchema = z.object({
   householdUnitGrams: z.number().positive().nullable().optional(),
   source: foodSourceSchema,
   sourceDetail: z.string().trim().min(1).nullable().optional(),
+  /** ¿Tiene sentido en desayuno/merienda? (pan, huevo, yogur, fruta, queso, nueces...) */
+  suitableBreakfast: z.boolean(),
+  /** ¿Tiene sentido en almuerzo/cena? (carnes, arroz, legumbres, verduras...) */
+  suitableMainMeal: z.boolean(),
 });
 
 export const foodUpdateSchema = foodInputSchema.extend({

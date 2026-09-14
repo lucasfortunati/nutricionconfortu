@@ -17,6 +17,8 @@ function toStoredValues(input: FoodInput) {
     householdUnitGrams: input.householdUnitGrams ?? null,
     source: input.source,
     sourceDetail: input.sourceDetail ?? null,
+    suitableBreakfast: input.suitableBreakfast,
+    suitableMainMeal: input.suitableMainMeal,
   };
 }
 
@@ -131,6 +133,8 @@ export async function setFoodStatus(id: string, status: FoodStatus, changeNote?:
         householdUnitGrams: existing.householdUnitGrams,
         source: existing.source,
         sourceDetail: existing.sourceDetail,
+        suitableBreakfast: existing.suitableBreakfast,
+        suitableMainMeal: existing.suitableMainMeal,
         status,
         reason: "MARK_REVIEW",
         changedFields: JSON.stringify(["status"]),
@@ -164,6 +168,8 @@ export async function restoreFoodVersion(id: string, versionId: string, changeNo
       householdUnitGrams: target.householdUnitGrams,
       source: target.source,
       sourceDetail: target.sourceDetail,
+      suitableBreakfast: target.suitableBreakfast,
+      suitableMainMeal: target.suitableMainMeal,
     };
 
     const changedFields = computeChangedFields(existing, { ...values, status: target.status });
