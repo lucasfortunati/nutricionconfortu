@@ -221,4 +221,53 @@ describe("buildMealGreedy", () => {
     expect(chosenIds).toContain("bread");
     expect(chosenIds).toContain("apple");
   });
+
+  it("resuelve el sistema exacto cuando los tres alimentos aportan de más de un macro a la vez", () => {
+    // Regresión de un bug real: con alimentos reales (avena, nuez, yogur) el
+    // armado secuencial anterior solo ajustaba la proteína al final y dejaba
+    // grasa/carbohidrato con bastante error porque avena aporta proteína real
+    // y nuez aporta carbohidrato real. El sistema de 3 ecuaciones y 3
+    // incógnitas debe calzar los tres macros con un margen mucho más chico
+    // que el ±10% general.
+    const oats: CandidateFood = {
+      id: "oats",
+      name: "Avena arrollada, cruda",
+      category: "Cereales y derivados",
+      kcalPer100g: 389,
+      proteinPer100g: 16.9,
+      fatPer100g: 6.9,
+      carbPer100g: 66.3,
+    };
+    const nuts: CandidateFood = {
+      id: "nuts",
+      name: "Nuez",
+      category: "Frutos secos y semillas",
+      kcalPer100g: 654,
+      proteinPer100g: 15.2,
+      fatPer100g: 65.2,
+      carbPer100g: 13.7,
+    };
+    const yogurt: CandidateFood = {
+      id: "yogurt",
+      name: "Yogur natural descremado",
+      category: "Lácteos",
+      kcalPer100g: 41,
+      proteinPer100g: 4,
+      fatPer100g: 0.2,
+      carbPer100g: 5.9,
+    };
+    const target = { kcal: 400, proteinG: 20, fatG: 12, carbG: 55 };
+
+    const result = buildMealGreedy(target, [yogurt, oats, nuts], {
+      random: () => 0,
+      roleClassifier: classifyBreakfastRole,
+      fillerCategory: "Frutas",
+    });
+
+    expect(result.totals.proteinG).toBeCloseTo(target.proteinG, 1);
+    expect(result.totals.fatG).toBeCloseTo(target.fatG, 1);
+    expect(result.totals.carbG).toBeCloseTo(target.carbG, 1);
+    expect(result.withinTolerance).toEqual({ kcal: true, proteinG: true, fatG: true, carbG: true });
+    expect(result.warnings).toEqual([]);
+  });
 });

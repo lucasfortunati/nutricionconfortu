@@ -14,6 +14,7 @@ export const DEFAULT_FAVORITE_FOOD_NAMES: string[] = [
   "Pan lactal blanco",
   "Pan francés",
   "Avena arrollada, cruda",
+  "Granola",
   "Nuez",
   "Almendra",
   "Manteca",
