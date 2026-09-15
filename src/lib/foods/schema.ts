@@ -22,6 +22,10 @@ export const foodInputSchema = z.object({
   suitableBreakfast: z.boolean(),
   /** ¿Tiene sentido en almuerzo/cena? (carnes, arroz, legumbres, verduras...) */
   suitableMainMeal: z.boolean(),
+  /** Cuánto pesa cocido por cada gramo crudo (ej. arroz 3, fideos 2.5, papa hervida 1, carnes 0.7). Solo aplica con state="RAW". */
+  cookedYieldFactor: z.number().positive().nullable().optional(),
+  /** Para categoría "Verduras": "A" (uso libre) o "B" (con moderación, más carbohidrato). */
+  vegetableGroup: z.enum(["A", "B"]).nullable().optional(),
 });
 
 export const foodUpdateSchema = foodInputSchema.extend({

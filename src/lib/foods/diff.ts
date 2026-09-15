@@ -15,6 +15,8 @@ export const FOOD_VERSIONED_FIELDS = [
   "status",
   "suitableBreakfast",
   "suitableMainMeal",
+  "cookedYieldFactor",
+  "vegetableGroup",
 ] as const;
 
 export type VersionedField = (typeof FOOD_VERSIONED_FIELDS)[number];

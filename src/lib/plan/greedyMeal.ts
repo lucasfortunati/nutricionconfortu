@@ -5,6 +5,8 @@ export interface CandidateFood extends MacroProfile {
   name: string;
   category: string;
   kcalPer100g: number;
+  /** Para verduras: "A" (uso libre) o "B" (con moderación). Se prefiere A al elegir el relleno de porción fija. */
+  vegetableGroup?: string | null;
 }
 
 export interface MealMacroTarget {
@@ -68,6 +70,20 @@ const MAX_FILLER_KCAL_PER_100G = 100;
 function pickRandom<T>(list: T[], random: () => number): T | null {
   if (list.length === 0) return null;
   return list[Math.floor(random() * list.length)];
+}
+
+/**
+ * Elige el relleno de porción fija priorizando el grupo A (uso libre, muy
+ * baja densidad calórica: acelga, brócoli, tomate...) sobre el grupo B (más
+ * carbohidrato: zanahoria, zapallo, cebolla...), y usando cualquier candidato
+ * sin grupo asignado (ej. choclo) solo si no hay ninguno de A ni B.
+ */
+function pickFillerFood<T extends CandidateFood>(candidates: T[], random: () => number): T | null {
+  const groupA = candidates.filter((f) => f.vegetableGroup === "A");
+  if (groupA.length > 0) return pickRandom(groupA, random);
+  const groupB = candidates.filter((f) => f.vegetableGroup === "B");
+  if (groupB.length > 0) return pickRandom(groupB, random);
+  return pickRandom(candidates, random);
 }
 
 function macrosFor<T extends CandidateFood>(food: T, grams: number) {
@@ -294,7 +310,7 @@ export function buildMealGreedy<T extends CandidateFood>(
   // macros (ej. 100g de fruta tienen carbohidrato real), y si no se
   // descuenta el resto de la comida termina sistemáticamente por encima
   // del objetivo en vez de calzar.
-  const fillerFood = pickRandom(fillerCandidates, random);
+  const fillerFood = pickFillerFood(fillerCandidates, random);
   const fillerContribution = fillerFood ? macrosFor(fillerFood, Math.min(fillerGrams, maxGrams)) : null;
   const solveTarget: MealMacroTarget = fillerContribution
     ? {

@@ -92,6 +92,10 @@ model FoodItem {
   status             FoodStatus @default(ACTIVE)
   suitableBreakfast  Boolean    @default(false)
   suitableMainMeal   Boolean    @default(true)
+  /** Cuánto pesa cocido por cada gramo crudo (ej. arroz 3, fideos 2.5, papa hervida 1, carnes 0.7). Solo tiene sentido con state=RAW. */
+  cookedYieldFactor  Float?
+  /** Para category="Verduras": "A" (uso libre, muy baja densidad calórica) o "B" (más carbohidrato, con moderación). */
+  vegetableGroup     String?
   currentVersion     Int        @default(1)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -123,6 +127,8 @@ model FoodItemVersion {
   status             FoodStatus
   suitableBreakfast  Boolean
   suitableMainMeal   Boolean
+  cookedYieldFactor  Float?
+  vegetableGroup     String?
   reason             VersionReason
   changedFields      String?
   changeNote         String?

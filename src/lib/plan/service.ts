@@ -7,6 +7,7 @@ import type { FoodItem, Prisma } from "@prisma/client";
 import { classifyBreakfastRole } from "./foodRole";
 import { distributeMealTargets, isBreakfastStyleMeal, type MealTarget } from "./mealSplit";
 import { buildMealGreedy, type GreedyMealResult, type MealMacroTarget } from "./greedyMeal";
+import { computeEquivalentOptions, type EquivalentOption } from "./equivalents";
 import type { CreatePlanInput } from "./schema";
 
 const BREAKFAST_FILLER_CATEGORY = "Frutas";
@@ -40,7 +41,7 @@ interface MealGenerationOutcome {
   result: GreedyMealResult<FoodItem>;
 }
 
-async function getFavoriteFoods(profileId: string): Promise<FoodItem[]> {
+export async function getFavoriteFoods(profileId: string): Promise<FoodItem[]> {
   const favorites = await prisma.profileFoodPreference.findMany({
     where: { profileId, status: "FAVORITE" },
     include: { foodItem: true },
@@ -186,7 +187,15 @@ export async function getPlan(id: string) {
     include: {
       meals: {
         orderBy: { order: "asc" },
-        include: { items: { orderBy: { id: "asc" } } },
+        include: {
+          items: {
+            orderBy: { id: "asc" },
+            // cookedYieldFactor es solo una ayuda de visualización (cuánto pesa
+            // cocido el ítem crudo elegido); se lee en vivo del FoodItem en vez
+            // de sacar una snapshot porque no afecta los macros ya calculados.
+            include: { foodItem: { select: { cookedYieldFactor: true } } },
+          },
+        },
       },
     },
   });
@@ -216,8 +225,71 @@ export async function regenerateMeal(planMealId: string) {
 
   const updatedMeal = await prisma.planMeal.findUniqueOrThrow({
     where: { id: planMealId },
-    include: { items: { orderBy: { id: "asc" } } },
+    include: {
+      items: { orderBy: { id: "asc" }, include: { foodItem: { select: { cookedYieldFactor: true } } } },
+    },
   });
 
   return { meal: updatedMeal, warnings: result.warnings };
+}
+
+async function loadItemWithMealName(itemId: string) {
+  const item = await prisma.planMealItem.findUniqueOrThrow({
+    where: { id: itemId },
+    include: { planMeal: { include: { plan: true } } },
+  });
+  return { item, mealName: item.planMeal.name, profileId: item.planMeal.plan.profileId };
+}
+
+/**
+ * Alternativas "equivalentes" a un ítem ya elegido en una comida (ver
+ * computeEquivalentOptions): mismas kcal aproximadas, mismo rol o misma
+ * categoría de relleno, solo entre los favoritos del perfil.
+ */
+export async function getEquivalentOptionsForItem(itemId: string): Promise<EquivalentOption[]> {
+  const { item, mealName, profileId } = await loadItemWithMealName(itemId);
+  const favoriteFoods = await getFavoriteFoods(profileId);
+  return computeEquivalentOptions(mealName, item, favoriteFoods);
+}
+
+/**
+ * Reemplaza el alimento de un ítem ya generado por otro favorito, ajustando
+ * los gramos para mantener aproximadamente las mismas kcal que tenía el
+ * ítem original (el mismo cálculo que se le mostró al usuario como opción).
+ */
+export async function swapMealItem(itemId: string, foodItemId: string) {
+  const { item } = await loadItemWithMealName(itemId);
+
+  const targetFood = await prisma.foodItem.findUniqueOrThrow({ where: { id: foodItemId } });
+  const targetVersion = await prisma.foodItemVersion.findFirst({
+    where: { foodItemId: targetFood.id, versionNumber: targetFood.currentVersion },
+  });
+
+  const grams = Math.round((item.computedKcal / targetFood.kcalPer100g) * 100);
+  const factor = grams / 100;
+
+  return prisma.planMealItem.update({
+    where: { id: itemId },
+    data: {
+      foodItemId: targetFood.id,
+      foodItemVersionId: targetVersion?.id ?? null,
+      foodName: targetFood.name,
+      category: targetFood.category,
+      state: targetFood.state,
+      source: targetFood.source,
+      sourceDetail: targetFood.sourceDetail,
+      householdUnitName: targetFood.householdUnitName,
+      householdUnitGrams: targetFood.householdUnitGrams,
+      kcalPer100gSnap: targetFood.kcalPer100g,
+      proteinPer100gSnap: targetFood.proteinPer100g,
+      fatPer100gSnap: targetFood.fatPer100g,
+      carbPer100gSnap: targetFood.carbPer100g,
+      grams,
+      computedKcal: targetFood.kcalPer100g * factor,
+      computedProtein: targetFood.proteinPer100g * factor,
+      computedFat: targetFood.fatPer100g * factor,
+      computedCarb: targetFood.carbPer100g * factor,
+    },
+    include: { foodItem: { select: { cookedYieldFactor: true } } },
+  });
 }

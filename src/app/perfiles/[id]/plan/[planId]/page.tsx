@@ -4,9 +4,14 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { BMR_FORMULA_LABELS, GOAL_TYPE_LABELS } from "@/lib/nutrition/labels";
-import { formatHouseholdUnit } from "@/lib/plan/format";
+import { formatCookedYield, formatHouseholdUnit } from "@/lib/plan/format";
+import type { EquivalentOption } from "@/lib/plan/equivalents";
 
-type PlanWithMeals = Prisma.PlanGetPayload<{ include: { meals: { include: { items: true } } } }>;
+type PlanWithMeals = Prisma.PlanGetPayload<{
+  include: {
+    meals: { include: { items: { include: { foodItem: { select: { cookedYieldFactor: true } } } } } };
+  };
+}>;
 
 function pct(actual: number, target: number): number {
   return target > 0 ? Math.round((actual / target) * 100) : 0;
@@ -18,6 +23,10 @@ export default function PlanDetailPage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [regeneratingMealId, setRegeneratingMealId] = useState<string | null>(null);
   const [mealWarnings, setMealWarnings] = useState<Record<string, string[]>>({});
+  const [openOptionsItemId, setOpenOptionsItemId] = useState<string | null>(null);
+  const [optionsByItemId, setOptionsByItemId] = useState<Record<string, EquivalentOption[]>>({});
+  const [loadingOptionsItemId, setLoadingOptionsItemId] = useState<string | null>(null);
+  const [swappingItemId, setSwappingItemId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +50,56 @@ export default function PlanDetailPage({ params }: { params: Promise<{ id: strin
       setMealWarnings((prev) => ({ ...prev, [mealId]: outcome.warnings ?? [] }));
     } finally {
       setRegeneratingMealId(null);
+    }
+  }
+
+  async function handleToggleOptions(mealId: string, itemId: string) {
+    if (openOptionsItemId === itemId) {
+      setOpenOptionsItemId(null);
+      return;
+    }
+    setOpenOptionsItemId(itemId);
+    if (!optionsByItemId[itemId]) {
+      setLoadingOptionsItemId(itemId);
+      try {
+        const res = await fetch(`/api/plans/${planId}/meals/${mealId}/items/${itemId}/equivalents`);
+        const options = await res.json();
+        setOptionsByItemId((prev) => ({ ...prev, [itemId]: options }));
+      } finally {
+        setLoadingOptionsItemId(null);
+      }
+    }
+  }
+
+  async function handleSwap(mealId: string, itemId: string, foodItemId: string) {
+    setSwappingItemId(itemId);
+    try {
+      const res = await fetch(`/api/plans/${planId}/meals/${mealId}/items/${itemId}/swap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foodItemId }),
+      });
+      const updatedItem = await res.json();
+      setPlan((prev) =>
+        prev
+          ? {
+              ...prev,
+              meals: prev.meals.map((m) =>
+                m.id === mealId
+                  ? { ...m, items: m.items.map((i) => (i.id === itemId ? updatedItem : i)) }
+                  : m,
+              ),
+            }
+          : prev,
+      );
+      setOptionsByItemId((prev) => {
+        const rest = { ...prev };
+        delete rest[itemId];
+        return rest;
+      });
+      setOpenOptionsItemId(null);
+    } finally {
+      setSwappingItemId(null);
     }
   }
 
@@ -129,15 +188,70 @@ export default function PlanDetailPage({ params }: { params: Promise<{ id: strin
               <ul className="flex flex-col gap-2">
                 {meal.items.map((item) => {
                   const householdText = formatHouseholdUnit(item.grams, item.householdUnitName, item.householdUnitGrams);
+                  const cookedYieldText = formatCookedYield(item.grams, item.state, item.foodItem?.cookedYieldFactor);
+                  const optionsOpen = openOptionsItemId === item.id;
+                  const options = optionsByItemId[item.id];
                   return (
-                    <li key={item.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <span className="text-zinc-900 dark:text-zinc-50">{item.foodName}</span>
-                        <span className="ml-2 text-zinc-500 dark:text-zinc-400">
-                          {item.grams}g{householdText ? ` (${householdText})` : ""}
-                        </span>
+                    <li key={item.id} className="flex flex-col gap-1 text-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-zinc-900 dark:text-zinc-50">{item.foodName}</span>
+                          <span className="ml-2 text-zinc-700 dark:text-zinc-300">
+                            {householdText ?? `${item.grams}g`}
+                          </span>
+                          {householdText && (
+                            <span className="ml-1 text-xs text-zinc-400 dark:text-zinc-500">({item.grams}g)</span>
+                          )}
+                          {cookedYieldText && (
+                            <p className="text-xs text-zinc-400 dark:text-zinc-500">{cookedYieldText}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-zinc-500 dark:text-zinc-400">{Math.round(item.computedKcal)} kcal</span>
+                          <button
+                            onClick={() => handleToggleOptions(meal.id, item.id)}
+                            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                          >
+                            {optionsOpen ? "Cerrar" : "Cambiar"}
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-zinc-500 dark:text-zinc-400">{Math.round(item.computedKcal)} kcal</span>
+
+                      {optionsOpen && (
+                        <div className="flex flex-col gap-1 rounded-lg bg-zinc-50 p-2 dark:bg-zinc-800">
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                            Alternativas con aproximadamente las mismas calorías:
+                          </span>
+                          {loadingOptionsItemId === item.id && (
+                            <span className="text-xs text-zinc-400">Buscando opciones…</span>
+                          )}
+                          {options?.length === 0 && (
+                            <span className="text-xs text-zinc-400">
+                              No hay otro favorito equivalente para este ítem.
+                            </span>
+                          )}
+                          {options?.map((opt) => {
+                            const optHousehold = formatHouseholdUnit(opt.grams, opt.householdUnitName, opt.householdUnitGrams);
+                            return (
+                              <button
+                                key={opt.foodId}
+                                onClick={() => handleSwap(meal.id, item.id, opt.foodId)}
+                                disabled={swappingItemId === item.id}
+                                className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                              >
+                                <span className="text-zinc-800 dark:text-zinc-200">
+                                  {opt.foodName}{" "}
+                                  <span className="text-zinc-500 dark:text-zinc-400">
+                                    ({optHousehold ?? `${opt.grams}g`}
+                                    {optHousehold ? `, ${opt.grams}g` : ""})
+                                  </span>
+                                </span>
+                                <span className="text-zinc-500 dark:text-zinc-400">{Math.round(opt.kcal)} kcal</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </li>
                   );
                 })}

@@ -116,6 +116,39 @@ describe("buildMealGreedy", () => {
     expect(veggieItem?.grams).toBe(100);
   });
 
+  it("prefiere una verdura del grupo A (uso libre) sobre una del grupo B como relleno, aunque venga después en la lista", () => {
+    const carrot: CandidateFood = {
+      id: "carrot",
+      name: "Zanahoria, cruda",
+      category: "Verduras",
+      kcalPer100g: 41,
+      proteinPer100g: 0.9,
+      fatPer100g: 0.2,
+      carbPer100g: 9.6,
+      vegetableGroup: "B",
+    };
+    const tomato: CandidateFood = {
+      id: "tomato",
+      name: "Tomate, crudo",
+      category: "Verduras",
+      kcalPer100g: 18,
+      proteinPer100g: 0.9,
+      fatPer100g: 0.2,
+      carbPer100g: 3.9,
+      vegetableGroup: "A",
+    };
+    const target = { kcal: 410, proteinG: 30, fatG: 10, carbG: 50 };
+    // La zanahoria (B) va primero en la lista; si el armado ignorara el
+    // grupo y solo mirara el orden, con random=()=>0 elegiría la zanahoria.
+    const result = buildMealGreedy(target, [pureProtein, pureCarb, pureFat, carrot, tomato], {
+      random: () => 0,
+    });
+
+    const chosenIds = result.items.map((i) => i.food.id);
+    expect(chosenIds).toContain("tomato");
+    expect(chosenIds).not.toContain("carrot");
+  });
+
   it("nunca usa una verdura como fuente principal de un macro, solo como relleno de porción fija", () => {
     // El brócoli clasifica como "CARB" por su ratio de macros, pero su densidad
     // calórica es tan baja que usarlo como fuente principal de carbohidratos

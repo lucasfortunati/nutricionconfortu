@@ -29,6 +29,8 @@ function toFormValues(food?: FoodItem | null): FoodFormValues {
       sourceDetail: "",
       suitableBreakfast: false,
       suitableMainMeal: true,
+      cookedYieldFactor: null,
+      vegetableGroup: null,
       changeNote: "",
     };
   }
@@ -47,6 +49,8 @@ function toFormValues(food?: FoodItem | null): FoodFormValues {
     sourceDetail: food.sourceDetail ?? "",
     suitableBreakfast: food.suitableBreakfast,
     suitableMainMeal: food.suitableMainMeal,
+    cookedYieldFactor: food.cookedYieldFactor,
+    vegetableGroup: food.vegetableGroup as FoodFormValues["vegetableGroup"],
     changeNote: "",
   };
 }
@@ -167,6 +171,39 @@ export function FoodForm({
           Almuerzo / cena (carnes, arroz, legumbres, verduras...)
         </label>
       </div>
+
+      {values.state === "RAW" && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-zinc-700 dark:text-zinc-300">
+            Factor de rendimiento cocido (opcional): cuánto pesa cocido por cada gramo crudo
+          </span>
+          <input
+            type="number"
+            step="0.1"
+            placeholder="ej: 3 para arroz, 2.5 para fideos, 0.7 para carnes"
+            value={values.cookedYieldFactor ?? ""}
+            onChange={(e) => update("cookedYieldFactor", e.target.value === "" ? null : Number(e.target.value))}
+            className="w-full max-w-md rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+          />
+        </label>
+      )}
+
+      {values.category === "Verduras" && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-zinc-700 dark:text-zinc-300">
+            Grupo de verdura (opcional): A = uso libre, B = con moderación (más carbohidrato)
+          </span>
+          <select
+            value={values.vegetableGroup ?? ""}
+            onChange={(e) => update("vegetableGroup", e.target.value === "" ? null : (e.target.value as "A" | "B"))}
+            className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+          >
+            <option value="">Sin clasificar</option>
+            <option value="A">Grupo A (libre)</option>
+            <option value="B">Grupo B (con moderación)</option>
+          </select>
+        </label>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm">

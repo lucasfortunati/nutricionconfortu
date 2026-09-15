@@ -172,4 +172,10 @@ export const INIT_SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "FoodItem" ADD COLUMN IF NOT EXISTS "suitableMainMeal" BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "suitableBreakfast" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "suitableMainMeal" BOOLEAN NOT NULL DEFAULT true`,
+
+  // --- Migración 20260915205234_add_cooked_yield_and_vegetable_group ---
+  `ALTER TABLE "FoodItem" ADD COLUMN IF NOT EXISTS "cookedYieldFactor" DOUBLE PRECISION`,
+  `ALTER TABLE "FoodItem" ADD COLUMN IF NOT EXISTS "vegetableGroup" TEXT`,
+  `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "cookedYieldFactor" DOUBLE PRECISION`,
+  `ALTER TABLE "FoodItemVersion" ADD COLUMN IF NOT EXISTS "vegetableGroup" TEXT`,
 ];

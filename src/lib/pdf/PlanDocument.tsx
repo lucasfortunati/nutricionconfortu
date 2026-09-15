@@ -1,9 +1,13 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Prisma } from "@prisma/client";
 import { BMR_FORMULA_LABELS, GOAL_TYPE_LABELS } from "@/lib/nutrition/labels";
-import { formatHouseholdUnit } from "@/lib/plan/format";
+import { formatCookedYield, formatHouseholdUnit } from "@/lib/plan/format";
 
-type PlanWithMeals = Prisma.PlanGetPayload<{ include: { meals: { include: { items: true } } } }>;
+type PlanWithMeals = Prisma.PlanGetPayload<{
+  include: {
+    meals: { include: { items: { include: { foodItem: { select: { cookedYieldFactor: true } } } } } };
+  };
+}>;
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
@@ -27,7 +31,8 @@ const styles = StyleSheet.create({
   mealName: { fontSize: 13, fontWeight: 700, marginBottom: 6 },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
   itemName: { flex: 1 },
-  itemQty: { width: 160, textAlign: "right", color: "#52514e" },
+  itemQty: { width: 160, textAlign: "right", color: "#3f3e3b" },
+  itemQtySmall: { fontSize: 8, color: "#9ca3af" },
   itemKcal: { width: 60, textAlign: "right" },
   mealTotals: {
     flexDirection: "row",
@@ -101,11 +106,17 @@ export function PlanDocument({ plan }: { plan: PlanWithMeals }) {
                   "≈",
                   "~",
                 );
+                const cookedYield = formatCookedYield(item.grams, item.state, item.foodItem?.cookedYieldFactor)?.replace(
+                  "≈",
+                  "~",
+                );
                 return (
                   <View key={item.id} style={styles.row}>
                     <Text style={styles.itemName}>{item.foodName}</Text>
                     <Text style={styles.itemQty}>
-                      {item.grams}g{household ? ` (${household})` : ""}
+                      {household ?? `${item.grams}g`}
+                      {household ? <Text style={styles.itemQtySmall}>{` (${item.grams}g)`}</Text> : null}
+                      {cookedYield ? <Text style={styles.itemQtySmall}>{`\n${cookedYield}`}</Text> : null}
                     </Text>
                     <Text style={styles.itemKcal}>{Math.round(item.computedKcal)} kcal</Text>
                   </View>
